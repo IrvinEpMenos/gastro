@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
+import { getAuth } from "firebase/auth"; // Correct import for Firebase Authentication
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -12,9 +13,8 @@ const firebaseConfig = {
   storageBucket: "neogastro-55724.firebasestorage.app",
   messagingSenderId: "730580708829",
   appId: "1:730580708829:web:9d79845552526f48539a34",
-  measurementId: "G-625B8GJ9Q5"
+  measurementId: "G-625B8GJ9Q5",
 };
-
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -22,4 +22,7 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Database
 const database = getDatabase(app);
 
-export { database };
+// Initialize Firebase Authentication
+const auth = getAuth(app);
+
+export { database, auth };
