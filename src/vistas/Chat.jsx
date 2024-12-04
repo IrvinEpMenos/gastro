@@ -1,47 +1,46 @@
 import React, { useState, useEffect } from "react";
-import { getDatabase, ref, set, push, get, onValue } from "firebase/database"; 
+import { getDatabase, ref, set, push, get, onValue } from "firebase/database";
 import { auth } from "../firebaseConfig";
 import { useNavigate, useParams } from "react-router-dom";
+import Sidebar from "./Sidebar";
 
 const Chat = () => {
-  const { contactId } = useParams(); // Obtener el ID del contacto desde la URL
+  const { contactId } = useParams();
   const [mensaje, setMensaje] = useState("");
   const [mensajes, setMensajes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [contactName, setContactName] = useState(""); // Guardar el nombre del contacto
+  const [contactName, setContactName] = useState("");
   const user = auth.currentUser;
   const navigate = useNavigate();
 
-  // Redirigir si el usuario intenta chatear consigo mismo
   useEffect(() => {
     if (user.uid === contactId) {
-      navigate("/dashboard"); // Redirigir a la vista de dashboard si es el mismo usuario
+      navigate("/dashboard");
     }
   }, [contactId, user.uid, navigate]);
 
-  // Obtener el nombre del contacto desde la base de datos de usuarios
   useEffect(() => {
     const db = getDatabase();
     const contactRef = ref(db, `usuarios/${contactId}`);
 
-    get(contactRef).then((snapshot) => { 
-      if (snapshot.exists()) {
-        setContactName(snapshot.val().nombre); 
-      } else {
-        console.log("El contacto no existe.");
-      }
-    }).catch((error) => {
-      console.error("Error al obtener el nombre del contacto:", error);
-    });
+    get(contactRef)
+      .then((snapshot) => {
+        if (snapshot.exists()) {
+          setContactName(snapshot.val().nombre);
+        } else {
+          console.log("El contacto no existe.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error al obtener el nombre del contacto:", error);
+      });
   }, [contactId]);
 
-  // Generar un ID único para el chat basado en los IDs de los usuarios
-  const chatId = [user.uid, contactId].sort().join("-"); // ID único para la conversación entre usuarios
+  const chatId = [user.uid, contactId].sort().join("-");
 
-  // Escuchar los mensajes en la base de datos
   useEffect(() => {
     const db = getDatabase();
-    const chatRef = ref(db, `chats/${chatId}`); // Usar el ID único del chat
+    const chatRef = ref(db, `chats/${chatId}`);
 
     onValue(chatRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -50,22 +49,20 @@ const Chat = () => {
           id: key,
           ...mensajesData[key],
         }));
-        setMensajes(mensajesList); // Actualizar los mensajes
+        setMensajes(mensajesList);
       } else {
-        setMensajes([]); // Si no hay mensajes, asegurarse de que el array esté vacío
+        setMensajes([]);
       }
-      setLoading(false); // Termina el estado de carga
+      setLoading(false);
     });
   }, [contactId, user.uid]);
 
   const handleSendMessage = async () => {
     if (mensaje.trim() && !loading) {
-      console.log("Enviando mensaje...");
-
-      setLoading(true); // Establecer como cargando antes de enviar el mensaje
+      setLoading(true);
 
       const db = getDatabase();
-      const newMessageRef = push(ref(db, `chats/${chatId}`)); // Usar el ID único del chat
+      const newMessageRef = push(ref(db, `chats/${chatId}`));
 
       const newMessageData = {
         mensaje,
@@ -74,83 +71,163 @@ const Chat = () => {
       };
 
       try {
-        await set(newMessageRef, newMessageData); // Guardar en la ruta del chat
-        console.log("Mensaje enviado correctamente");
+        await set(newMessageRef, newMessageData);
       } catch (error) {
         console.error("Error al enviar el mensaje:", error);
       } finally {
-        setMensaje(""); // Limpiar el campo de mensaje
-        setLoading(false); // Establecer como no cargando después de enviar
+        setMensaje("");
+        setLoading(false);
       }
     }
   };
+
   const handleBackToDashboard = () => {
-    navigate("/dashboard"); // Regresa al dashboard
+    navigate("/dashboard");
+  };
+
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Chat con {contactName || "Cargando..."}</h2>
+    <div style={styles.container}>
+      <Sidebar />
+      <div style={styles.chatContent}>
+        <h2>Chat con {contactName || "Cargando..."}</h2>
 
-      {/* Botón para regresar al Dashboard */}
-      <button
-        onClick={handleBackToDashboard}
-        style={{
-          padding: "8px 16px",
-          backgroundColor: "#FF5733",
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-          marginBottom: "10px",
-        }}
-      >
-        Regresar al Dashboard
-      </button>
+        <button onClick={handleBackToDashboard} style={styles.backButton}>
+          Regresar al Dashboard
+        </button>
 
-      <div>
-        {loading ? (
-          <p>Cargando mensajes...</p>
-        ) : (
-          <div>
-            <ul style={{ listStyleType: "none", padding: 0 }}>
-              {mensajes.length > 0 ? (
-                mensajes.map((msg) => (
-                  <li key={msg.id} style={{ marginBottom: "10px" }}>
-                    <strong>{msg.sender === user.uid ? "Tú" : contactName}:</strong> {msg.mensaje}
-                  </li>
-                ))
-              ) : (
-                <p>No hay mensajes aún.</p>
-              )}
-            </ul>
+        <div style={styles.messagesContainer}>
+          {loading ? (
+            <p>Cargando mensajes...</p>
+          ) : (
+            <div>
+              <ul style={styles.messageList}>
+                {mensajes.length > 0 ? (
+                  mensajes.map((msg) => (
+                    <li
+                      key={msg.id}
+                      style={{
+                        ...styles.messageItem,
+                        backgroundColor: msg.sender === user.uid ? "#4CAF50" : "#E3F2FD",
+                        marginLeft: msg.sender === user.uid ? "500px" : "0px",
+                      }}
+                    >
+                      <div style={styles.messageContent}>
+                        <p style={styles.messageText}>{msg.mensaje}</p>
+                        <div style={styles.timestamp}>{formatTimestamp(msg.timestamp)}</div>
+                      </div>
+                    </li>
+                  ))
+                ) : (
+                  <p>No hay mensajes aún.</p>
+                )}
+              </ul>
 
-            <div style={{ display: "flex", marginTop: "10px" }}>
-              <input
-                type="text"
-                value={mensaje}
-                onChange={(e) => setMensaje(e.target.value)}
-                placeholder="Escribe un mensaje"
-                style={{ width: "300px", marginRight: "10px", padding: "8px" }}
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={loading || !mensaje.trim()}
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#4CAF50",
-                  color: "white",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                Enviar
-              </button>
+              <div style={styles.inputContainer}>
+                <input
+                  type="text"
+                  value={mensaje}
+                  onChange={(e) => setMensaje(e.target.value)}
+                  placeholder="Escribe un mensaje"
+                  style={styles.input}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={loading || !mensaje.trim()}
+                  style={styles.sendButton}
+                >
+                  Enviar
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
+};
+
+const styles = {
+  container: {
+    display: "flex",
+    backgroundColor: "#f4f7fc",
+  },
+  chatContent: {
+    marginLeft: "250px",
+    padding: "20px",
+    width: "100%",
+    textAlign: "center",
+    backgroundColor: "#fff",
+    borderRadius: "10px",
+    boxShadow: "0px 4px 6px rgba(0,0,0,0.1)",
+  },
+  backButton: {
+    padding: "8px 16px",
+    backgroundColor: "#3498db",
+    color: "white",
+    border: "none",
+    cursor: "pointer",
+    marginBottom: "10px",
+    borderRadius: "5px",
+  },
+  messagesContainer: {
+    marginLeft: "70px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+    height: "400px",
+    overflowY: "scroll",
+    marginBottom: "20px",
+  },
+  messageList: {
+    listStyleType: "none",
+    padding: 0,
+  },
+  messageItem: {
+    padding: "12px 18px",
+    borderRadius: "15px",
+    marginBottom: "10px",
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+    maxWidth: "30%",
+    wordWrap: "break-word",
+  },
+  messageContent: {
+    maxWidth: "100%",
+  },
+  messageText: {
+    margin: "0",
+    fontSize: "14px",
+    lineHeight: "1.5",
+  },
+  timestamp: {
+    fontSize: "10px",
+    color: "#777",
+    marginTop: "5px",
+  },
+  inputContainer: {
+    display: "flex",
+    marginTop: "10px",
+  },
+  input: {
+    marginLeft: "20px",
+    width: "80%",
+    padding: "10px",
+    borderRadius: "5px",
+    border: "1px solid #ccc",
+    marginRight: "10px",
+  },
+  sendButton: {
+    padding: "10px 20px",
+    backgroundColor: "#3498db",
+    color: "white",
+    border: "none",
+    cursor: "pointer",
+    borderRadius: "5px",
+  },
 };
 
 export default Chat;

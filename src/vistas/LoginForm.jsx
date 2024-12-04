@@ -21,7 +21,6 @@ const LoginForm = () => {
 
       // Guardar el usuario en la sesión
       sessionStorage.setItem("user", JSON.stringify({ email: user.email, uid: user.uid }));
-      alert("Inicio de sesión exitoso");
 
       // Redirigir al Dashboard
       navigate("/dashboard");
